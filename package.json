@@ -1,11 +1,28 @@
 {
   "dependencies": {
-    "express": "*",
-    "mocha": "^10.2.0",
-    "socket.io": "*"
+    "express": "^5.3.0",
+    "socket.io": "^4.8.4"
   },
   "scripts": {
     "start": "node server.js",
-    "test": "mocha"
+    "test": "jest --coverage --runInBand",
+    "test:unit": "jest test/test.js --coverage --runInBand",
+    "test:integration": "jest test/integration.test.js test/socket.integration.test.js tests/integration/chat.test.js --runInBand",
+    "test:e2e": "playwright test",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e",
+    "snyk": "snyk test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "jest": "^30.5.2",
+    "snyk": "^1.1308.2",
+    "socket.io-client": "^4.8.4",
+    "supertest": "^7.3.1"
+  },
+  "overrides": {
+    "ws": "^8.21.3",
+    "socket.io-parser": "^4.2.7"
   }
 }

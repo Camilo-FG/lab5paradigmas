@@ -3,7 +3,8 @@
 
 // libreriuas
 var validation = require('./libs/unalib');
-var app = require('express')();
+var express = require('express');
+var app = express();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var port = process.env.PORT || 3000;
@@ -24,6 +25,23 @@ io.on('connection', function(socket){
   });
 });
 
-http.listen(port, function(){
-  console.log('listening on *:' + port);
-});
+// Inicia el listener HTTP. Se exporta para que las pruebas de integración
+// puedan levantar el servidor en un puerto efímero.
+function start(listenPort, callback) {
+  var selectedPort = listenPort === undefined ? port : listenPort;
+  return http.listen(selectedPort, callback);
+}
+
+// Solo escucha automáticamente cuando se ejecuta con `node server.js`.
+if (require.main === module) {
+  start(port, function(){
+    console.log('listening on *:' + port);
+  });
+}
+
+module.exports = {
+  app: app,
+  http: http,
+  io: io,
+  start: start
+};

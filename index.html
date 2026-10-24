@@ -1,74 +1,851 @@
 <!doctype html>
-<html>
+<html lang="es">
   <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chat Socket.IO UNA</title>
     <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font: 13px Helvetica, Arial; }
-      form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
-      form input { border: 0; padding: 10px;}
-      form button { width: 10%; background: rgb(130, 224, 255);  border: none; padding: 10px; }
-      #messages { list-style-type: none; margin: 0; padding: 0; }
-      #messages li { padding: 5px 10px; }
-      #messages li:nth-child(odd) { background: #eee; }
-      #messages { margin-bottom: 40px }
-      #nombre, #m { display: inline-block;}
-      #m {width: 69%; margin-right: 4px;}
-      #nombre {width: 20%}
+      :root {
+        --brand: #4f46e5;
+        --brand-dark: #4338ca;
+        --brand-soft: #eef2ff;
+        --ink: #111827;
+        --muted: #6b7280;
+        --line: #e5e7eb;
+        --surface: #ffffff;
+        --received: #f3f4f6;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        color-scheme: light;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        align-items: stretch;
+        background:
+          radial-gradient(circle at 15% 0%, #e0e7ff 0%, transparent 45%),
+          radial-gradient(circle at 85% 100%, #ede9fe 0%, transparent 40%),
+          #f8fafc;
+        color: var(--ink);
+        display: flex;
+        font-family: "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+        font-size: 14px;
+        justify-content: center;
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
+
+      .chat-app {
+        background: var(--surface);
+        box-shadow: 0 24px 70px rgba(17, 24, 39, 0.12);
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh;
+        max-width: 900px;
+        position: relative;
+        width: 100%;
+      }
+
+      .chat-header {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.94);
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        padding: 14px 18px;
+      }
+
+      .chat-brand {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .chat-brand__logo {
+        align-items: center;
+        background: linear-gradient(135deg, var(--brand), #7c3aed);
+        border-radius: 12px;
+        box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3);
+        color: #fff;
+        display: grid;
+        flex: 0 0 40px;
+        font-size: 18px;
+        font-weight: 800;
+        height: 40px;
+        place-items: center;
+      }
+
+      .chat-brand h1 {
+        font-size: 16px;
+        line-height: 1.2;
+      }
+
+      .chat-brand p {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 2px;
+      }
+
+      .connection {
+        align-items: center;
+        background: #f3f4f6;
+        border-radius: 999px;
+        color: #374151;
+        display: inline-flex;
+        flex: 0 0 auto;
+        font-size: 12px;
+        font-weight: 600;
+        gap: 8px;
+        padding: 6px 11px;
+      }
+
+      .connection__dot {
+        background: #9ca3af;
+        border-radius: 50%;
+        box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.2);
+        height: 8px;
+        width: 8px;
+      }
+
+      .connection--connected {
+        background: #ecfdf5;
+        color: #047857;
+      }
+
+      .connection--connected .connection__dot {
+        background: var(--success);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+      }
+
+      .connection--disconnected {
+        background: #fef2f2;
+        color: #b91c1c;
+      }
+
+      .connection--disconnected .connection__dot {
+        background: var(--danger);
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+      }
+
+      .connection--connecting,
+      .connection--reconnecting {
+        background: #fffbeb;
+        color: #92400e;
+      }
+
+      .connection--connecting .connection__dot,
+      .connection--reconnecting .connection__dot {
+        animation: pulse 1.2s ease-in-out infinite;
+        background: var(--warning);
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+      }
+
+      .chat-body {
+        background:
+          radial-gradient(circle at 100% 0%, rgba(79, 70, 229, 0.06), transparent 42%),
+          var(--surface);
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 22px 18px 16px;
+        position: relative;
+      }
+
+      .empty-state {
+        align-items: center;
+        color: var(--muted);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        inset: 0;
+        justify-content: center;
+        padding: 28px;
+        position: absolute;
+        text-align: center;
+      }
+
+      .empty-state__icon {
+        font-size: 34px;
+        line-height: 1;
+        margin-bottom: 4px;
+      }
+
+      .empty-state__title {
+        color: #374151;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .empty-state__hint {
+        font-size: 13px;
+        max-width: 280px;
+      }
+
+      .empty-state[hidden] {
+        display: none;
+      }
+
+      #messages {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .message {
+        align-items: flex-end;
+        animation: message-in 0.18s ease-out;
+        display: flex;
+        gap: 10px;
+      }
+
+      .message--own {
+        flex-direction: row-reverse;
+      }
+
+      .message__avatar {
+        align-items: center;
+        background: var(--author-color, var(--brand));
+        border-radius: 50%;
+        box-shadow: 0 2px 6px rgba(17, 24, 39, 0.16);
+        color: #fff;
+        display: grid;
+        flex: 0 0 34px;
+        font-size: 14px;
+        font-weight: 700;
+        height: 34px;
+        place-items: center;
+        text-transform: uppercase;
+        width: 34px;
+      }
+
+      .message__body {
+        max-width: min(74%, 560px);
+        min-width: 0;
+      }
+
+      .message__meta {
+        align-items: baseline;
+        color: var(--muted);
+        display: flex;
+        font-size: 11px;
+        gap: 8px;
+        margin: 0 0 4px 4px;
+      }
+
+      .message--own .message__meta {
+        justify-content: flex-end;
+        margin: 0 4px 4px 0;
+      }
+
+      .message__author {
+        color: #374151;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+
+      .message__badge {
+        background: rgba(79, 70, 229, 0.12);
+        border-radius: 999px;
+        color: var(--brand);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 1px 7px;
+        text-transform: uppercase;
+      }
+
+      .message--own .message__badge {
+        background: rgba(79, 70, 229, 0.14);
+      }
+
+      .message__time {
+        font-variant-numeric: tabular-nums;
+      }
+
+      .message__bubble {
+        background: var(--received);
+        border-radius: 18px 18px 18px 4px;
+        box-shadow: 0 1px 2px rgba(17, 24, 39, 0.06);
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+        padding: 10px 14px;
+      }
+
+      .message--own .message__bubble {
+        background: linear-gradient(135deg, var(--brand), #7c3aed);
+        border-radius: 18px 18px 4px 18px;
+        color: #fff;
+      }
+
+      .message__content img {
+        border-radius: 12px;
+        display: block;
+        height: auto;
+        margin: 2px 0;
+        max-height: 360px;
+        max-width: 100%;
+      }
+
+      .message__content iframe {
+        aspect-ratio: 16 / 9;
+        background: #000;
+        border: 0;
+        border-radius: 12px;
+        display: block;
+        height: auto;
+        max-width: 520px;
+        width: 100%;
+      }
+
+      .jump-latest {
+        align-items: center;
+        background: var(--brand);
+        border: 0;
+        border-radius: 999px;
+        bottom: 84px;
+        box-shadow: 0 10px 24px rgba(79, 70, 229, 0.35);
+        color: #fff;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        gap: 6px;
+        left: 50%;
+        padding: 8px 14px;
+        position: absolute;
+        transform: translateX(-50%);
+        transition: background 0.15s ease, transform 0.15s ease;
+        z-index: 5;
+      }
+
+      .jump-latest:hover {
+        background: var(--brand-dark);
+        transform: translateX(-50%) translateY(-1px);
+      }
+
+      .jump-latest:focus-visible {
+        outline: 3px solid rgba(79, 70, 229, 0.35);
+        outline-offset: 2px;
+      }
+
+      .jump-latest span {
+        background: rgba(255, 255, 255, 0.24);
+        border-radius: 999px;
+        padding: 1px 7px;
+      }
+
+      .jump-latest[hidden] {
+        display: none;
+      }
+
+      .composer {
+        align-items: center;
+        background: var(--surface);
+        border-top: 1px solid var(--line);
+        display: flex;
+        gap: 10px;
+        padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      }
+
+      .composer input {
+        background: #f9fafb;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        color: var(--ink);
+        font: inherit;
+        font-size: 14px;
+        padding: 11px 13px;
+        transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .composer input:focus {
+        background: #fff;
+        border-color: var(--brand);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        outline: none;
+      }
+
+      #nombre {
+        flex: 0 0 160px;
+        width: 160px;
+      }
+
+      #m {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      .composer button {
+        background: var(--brand);
+        border: 0;
+        border-radius: 12px;
+        color: #fff;
+        cursor: pointer;
+        flex: 0 0 auto;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 11px 20px;
+        transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+      }
+
+      .composer button:hover:not(:disabled) {
+        background: var(--brand-dark);
+      }
+
+      .composer button:active:not(:disabled) {
+        transform: translateY(1px);
+      }
+
+      .composer button:focus-visible {
+        outline: 3px solid rgba(79, 70, 229, 0.35);
+        outline-offset: 2px;
+      }
+
+      .composer button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+      }
+
+      .sr-only {
+        border: 0;
+        clip: rect(0 0 0 0);
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        padding: 0;
+        position: absolute;
+        white-space: nowrap;
+        width: 1px;
+      }
+
+      @keyframes message-in {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .chat-header {
+          padding: 12px 14px;
+        }
+
+        .chat-brand p {
+          display: none;
+        }
+
+        #nombre {
+          flex-basis: 104px;
+          width: 104px;
+        }
+
+        .composer {
+          gap: 8px;
+          padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+        }
+
+        .composer button {
+          padding: 11px 14px;
+        }
+
+        .message__body {
+          max-width: 82%;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
     </style>
   </head>
   <body>
-    <ul id="messages"></ul>
-    <form action="">
-      <input id="nombre" autocomplete="off" placeholder="Username"/>
-      <input id="m" autocomplete="off" placeholder="Escriba un mensaje" /><button>Send</button>
-    </form>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.js"></script>
-    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <div class="chat-app">
+      <header class="chat-header">
+        <div class="chat-brand">
+          <span class="chat-brand__logo" aria-hidden="true">U</span>
+          <div>
+            <h1>UNA Chat</h1>
+            <p>Conversación en tiempo real</p>
+          </div>
+        </div>
+        <div
+          id="connection-status"
+          class="connection connection--connecting"
+          data-state="connecting"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="connection__dot" aria-hidden="true"></span>
+          <span id="connection-label">Conectando…</span>
+        </div>
+      </header>
+
+      <main id="chat-body" class="chat-body">
+        <p id="empty-state" class="empty-state">
+          <span class="empty-state__icon" aria-hidden="true">💬</span>
+          <span class="empty-state__title">Aún no hay mensajes</span>
+          <span class="empty-state__hint">Escribe el primero para iniciar la conversación.</span>
+        </p>
+        <ul id="messages" aria-live="polite" aria-relevant="additions text" aria-atomic="false"></ul>
+      </main>
+
+      <button id="jump-latest" class="jump-latest" type="button" hidden>
+        Nuevos mensajes <span id="jump-count">0</span> ↓
+      </button>
+
+      <form id="chat-form" class="composer" action="">
+        <label class="sr-only" for="nombre">Nombre de usuario</label>
+        <input
+          id="nombre"
+          name="nombre"
+          type="text"
+          maxlength="30"
+          autocomplete="off"
+          placeholder="Username"
+        />
+        <label class="sr-only" for="m">Mensaje</label>
+        <input
+          id="m"
+          name="mensaje"
+          type="text"
+          maxlength="2000"
+          autocomplete="off"
+          placeholder="Escriba un mensaje"
+          aria-describedby="composer-hint"
+        />
+        <button id="send" type="submit">Send</button>
+      </form>
+      <p id="composer-hint" class="sr-only">Presiona Enter para enviar el mensaje.</p>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
     <script>
+      (function () {
+        'use strict';
 
-    var colorHexTxt = "";
+        var MAX_NAME_LENGTH = 30;
+        var NEAR_BOTTOM_THRESHOLD = 80;
+        var DEFAULT_AUTHOR_NAME = 'Anónimo';
+        var DEFAULT_AUTHOR_COLOR = '#4f46e5';
+        var HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
-    // genera colores aleatorios en hexadeximal
-    function getRandomColor() {
-        var letters = '0123456789ABCDEF';
-        var color = '#';
-        for (var i = 0; i < 6; i++) {
-          color += letters[Math.floor(Math.random() * 16)];
+        var socket = io();
+        // Expuesto para pruebas E2E: permite simular desconexiones sin acoplarse a la UI.
+        window.chatSocket = socket;
+
+        var clientId =
+          'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+
+        var messagesEl = document.getElementById('messages');
+        var chatBody = document.getElementById('chat-body');
+        var emptyState = document.getElementById('empty-state');
+        var jumpButton = document.getElementById('jump-latest');
+        var jumpCount = document.getElementById('jump-count');
+        var form = document.getElementById('chat-form');
+        var nameInput = document.getElementById('nombre');
+        var messageInput = document.getElementById('m');
+        var sendButton = document.getElementById('send');
+        var connectionStatus = document.getElementById('connection-status');
+        var connectionLabel = document.getElementById('connection-label');
+
+        var hasMessages = false;
+        var pendingMessages = 0;
+        var colorHexTxt = '';
+
+        function getRandomColor() {
+          var letters = '0123456789ABCDEF';
+          var color = '#';
+          for (var i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+          }
+          return color;
         }
 
-        return color;
-     }
+        function normalizeName(value) {
+          return String(value || '')
+            .trim()
+            .slice(0, MAX_NAME_LENGTH);
+        }
 
-      $(function () {
-        var socket = io();
+        // El servidor entrega el nombre escapado; se decodifica solo para textos
+        // alternativos y para la inicial del avatar.
+        function visibleName(value) {
+          var textarea = document.createElement('textarea');
+          textarea.innerHTML = String(value || '');
+          return textarea.value;
+        }
 
-        // emite evento al servidor
-        
-        $('form').submit(function(){
-            var nombreTxt = $('#nombre').val() || "Anomimo";
-            var mensajeTxt = $('#m').val();
+        function initialOf(name) {
+          var visible = visibleName(name).trim();
+          return visible ? visible.charAt(0).toUpperCase() : '?';
+        }
 
-            if (colorHexTxt == "") {
-                colorHexTxt = getRandomColor();
+        function formatTime(date) {
+          return date.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+        }
+
+        function isNearBottom() {
+          return (
+            chatBody.scrollHeight - chatBody.scrollTop - chatBody.clientHeight <=
+            NEAR_BOTTOM_THRESHOLD
+          );
+        }
+
+        function updateJumpButton() {
+          if (pendingMessages > 0) {
+            jumpCount.textContent = String(pendingMessages);
+            jumpButton.hidden = false;
+          } else {
+            jumpCount.textContent = '0';
+            jumpButton.hidden = true;
+          }
+        }
+
+        function scrollToLatest(behavior) {
+          if (behavior === 'smooth') {
+            chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' });
+          } else {
+            // Salto instantáneo para no perder mensajes durante ráfagas.
+            chatBody.scrollTop = chatBody.scrollHeight;
+          }
+          pendingMessages = 0;
+          updateJumpButton();
+        }
+
+        function setConnectionState(state) {
+          var labels = {
+            connected: 'Conectado',
+            disconnected: 'Desconectado',
+            connecting: 'Conectando…',
+            reconnecting: 'Reconectando…'
+          };
+          connectionLabel.textContent = labels[state] || labels.connecting;
+          connectionStatus.dataset.state = state;
+          connectionStatus.className = 'connection connection--' + state;
+        }
+
+        function updateSendState() {
+          sendButton.disabled = messageInput.value.trim().length === 0;
+        }
+
+        function buildMessage(msgJson) {
+          var rawName = typeof msgJson.nombre === 'string' ? msgJson.nombre : DEFAULT_AUTHOR_NAME;
+          var rawColor = typeof msgJson.color === 'string' ? msgJson.color : '';
+          var color = HEX_COLOR.test(rawColor) ? rawColor : DEFAULT_AUTHOR_COLOR;
+
+          var li = document.createElement('li');
+          li.className = 'message';
+          li.style.setProperty('--author-color', color);
+
+          var own =
+            (typeof msgJson.clienteId === 'string' &&
+              msgJson.clienteId.length > 0 &&
+              msgJson.clienteId === clientId) ||
+            normalizeName(nameInput.value) === visibleName(rawName);
+
+          if (own) {
+            li.className += ' message--own';
+          }
+
+          var avatar = document.createElement('span');
+          avatar.className = 'message__avatar';
+          avatar.setAttribute('aria-hidden', 'true');
+          avatar.textContent = initialOf(rawName);
+
+          var body = document.createElement('div');
+          body.className = 'message__body';
+
+          var meta = document.createElement('div');
+          meta.className = 'message__meta';
+
+          var author = document.createElement('span');
+          author.className = 'message__author';
+          // El servidor escapa el nombre antes de reenviarlo.
+          author.innerHTML = rawName;
+          meta.appendChild(author);
+
+          if (own) {
+            var badge = document.createElement('span');
+            badge.className = 'message__badge';
+            badge.textContent = 'Tú';
+            meta.appendChild(badge);
+          }
+
+          var now = new Date();
+          var time = document.createElement('time');
+          time.className = 'message__time';
+          time.dateTime = now.toISOString();
+          time.title = now.toLocaleString();
+          time.textContent = formatTime(now);
+          meta.appendChild(time);
+
+          var bubble = document.createElement('div');
+          bubble.className = 'message__bubble';
+
+          var content = document.createElement('div');
+          content.className = 'message__content';
+          // El servidor solo produce texto escapado o etiquetas img/iframe
+          // construidas a partir de URLs previamente validadas.
+          content.innerHTML = typeof msgJson.mensaje === 'string' ? msgJson.mensaje : '';
+
+          var authorText = visibleName(rawName) || DEFAULT_AUTHOR_NAME;
+          Array.prototype.forEach.call(content.querySelectorAll('img'), function (img) {
+            if (!img.getAttribute('alt')) {
+              img.setAttribute('alt', 'Imagen compartida por ' + authorText);
             }
+            img.loading = 'lazy';
+          });
+          Array.prototype.forEach.call(content.querySelectorAll('iframe'), function (frame) {
+            if (!frame.getAttribute('title')) {
+              frame.setAttribute('title', 'Video de YouTube compartido por ' + authorText);
+            }
+          });
 
-            var jsonMsg = { nombre: nombreTxt, mensaje: mensajeTxt, color: colorHexTxt };
-            socket.emit('Evento-Mensaje-Server', JSON.stringify(jsonMsg));
-            $('#m').val('');
-            return false;
+          bubble.appendChild(content);
+          body.appendChild(meta);
+          body.appendChild(bubble);
+          li.appendChild(avatar);
+          li.appendChild(body);
+
+          return li;
+        }
+
+        function addMessage(msgJson) {
+          var shouldStick = isNearBottom();
+          messagesEl.appendChild(buildMessage(msgJson));
+
+          if (!hasMessages) {
+            hasMessages = true;
+            emptyState.hidden = true;
+          }
+
+          if (shouldStick) {
+            scrollToLatest('auto');
+          } else {
+            pendingMessages += 1;
+            updateJumpButton();
+          }
+        }
+
+        jumpButton.addEventListener('click', function () {
+          scrollToLatest('smooth');
         });
 
-        // ... (resto del código) ...
+        chatBody.addEventListener(
+          'scroll',
+          function () {
+            if (isNearBottom() && pendingMessages > 0) {
+              pendingMessages = 0;
+              updateJumpButton();
+            }
+          },
+          { passive: true }
+        );
 
-        socket.on('Evento-Mensaje-Server', function(msg){
-            var msgJson = JSON.parse(msg);
-            var mensajeDisplay = "<b style='color:"+ msgJson.color +"'>" + msgJson.nombre + "</b>: " + msgJson.mensaje;
-            $('#messages').append($('<li>').html(mensajeDisplay));
-            window.scrollTo(0, document.body.scrollHeight);
+        messageInput.addEventListener('input', updateSendState);
+        updateSendState();
+
+        form.addEventListener('submit', function (event) {
+          event.preventDefault();
+
+          var text = messageInput.value.trim();
+          if (!text) {
+            updateSendState();
+            messageInput.focus();
+            return;
+          }
+
+          if (colorHexTxt === '') {
+            colorHexTxt = getRandomColor();
+          }
+
+          var nombre = normalizeName(nameInput.value) || DEFAULT_AUTHOR_NAME;
+          var jsonMsg = {
+            nombre: nombre,
+            mensaje: text,
+            color: colorHexTxt,
+            clienteId: clientId
+          };
+
+          socket.emit('Evento-Mensaje-Server', JSON.stringify(jsonMsg));
+          messageInput.value = '';
+          updateSendState();
+          messageInput.focus();
         });
 
-      });
+        socket.on('Evento-Mensaje-Server', function (msg) {
+          try {
+            addMessage(JSON.parse(msg));
+          } catch (e) {
+            console.error('Mensaje inválido recibido:', e);
+          }
+        });
+
+        socket.on('connect', function () {
+          setConnectionState('connected');
+        });
+
+        socket.on('disconnect', function () {
+          setConnectionState('disconnected');
+        });
+
+        socket.on('connect_error', function () {
+          setConnectionState('reconnecting');
+        });
+
+        if (socket.io && typeof socket.io.on === 'function') {
+          socket.io.on('reconnect_attempt', function () {
+            setConnectionState('reconnecting');
+          });
+        }
+
+        setConnectionState(socket.connected ? 'connected' : 'connecting');
+      })();
     </script>
   </body>
 </html>
